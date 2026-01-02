@@ -18,7 +18,7 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/jpillora/installer/scripts"
+	"github.com/voluzi/installer/scripts"
 )
 
 const (
@@ -60,9 +60,31 @@ func (q Query) cacheKey() string {
 // Handler serves install scripts using Github releases
 type Handler struct {
 	Config
-	Client   *http.Client
-	cacheMut sync.Mutex
-	cache    map[string]QueryResult
+	Client    *http.Client
+	cacheMut  sync.Mutex
+	cache     map[string]QueryResult
+	renameMap map[string]string
+}
+
+func (h *Handler) initRenameMap() {
+	if h.renameMap != nil || h.Config.BinaryRename == "" {
+		return
+	}
+	h.renameMap = make(map[string]string)
+	for _, pair := range strings.Split(h.Config.BinaryRename, ",") {
+		pair = strings.TrimSpace(pair)
+		if pair == "" {
+			continue
+		}
+		parts := strings.SplitN(pair, ":", 2)
+		if len(parts) == 2 {
+			repo := strings.TrimSpace(parts[0])
+			name := strings.TrimSpace(parts[1])
+			if repo != "" && name != "" {
+				h.renameMap[repo] = name
+			}
+		}
+	}
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -159,10 +181,17 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if h.Config.ForceRepo != "" {
 		q.Program = h.Config.ForceRepo
 	}
+	// apply binary rename if configured and no explicit ?as= param
+	if q.AsProgram == "" {
+		h.initRenameMap()
+		if rename, ok := h.renameMap[q.Program]; ok {
+			q.AsProgram = rename
+		}
+	}
 	// validate query
 	valid := q.Program != ""
 	if !valid && path == "" {
-		http.Redirect(w, r, "https://github.com/jpillora/installer", http.StatusMovedPermanently)
+		http.Redirect(w, r, "https://github.com/voluzi/installer", http.StatusMovedPermanently)
 		return
 	}
 	if !valid {

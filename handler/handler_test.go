@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jpillora/installer/handler"
+	"github.com/voluzi/installer/handler"
 	"gopkg.in/dnaeon/go-vcr.v4/pkg/recorder"
 )
 
@@ -377,4 +377,56 @@ func TestProtoc(t *testing.T) {
 		"linux/s390x":   "protoc-33.1-linux-s390_64.zip",
 	}
 	batchCheckAssets(t, w, testCases)
+}
+
+func TestBinaryRename(t *testing.T) {
+	_, client := setupRecorder(t)
+	h := &handler.Handler{
+		Client: client,
+		Config: handler.Config{
+			BinaryRename: "serve:serverd, micro:microd",
+		},
+	}
+
+	r := httptest.NewRequest("GET", "/jpillora/serve?type=json", nil)
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	if w.Result().StatusCode != 200 {
+		t.Fatalf("unexpected status %d", w.Result().StatusCode)
+	}
+
+	var result handler.QueryResult
+	if err := json.Unmarshal(w.Body.Bytes(), &result); err != nil {
+		t.Fatalf("failed to decode JSON: %v", err)
+	}
+
+	if result.AsProgram != "serverd" {
+		t.Fatalf("expected AsProgram 'serverd', got %q", result.AsProgram)
+	}
+}
+
+func TestBinaryRenameExplicitAsOverrides(t *testing.T) {
+	_, client := setupRecorder(t)
+	h := &handler.Handler{
+		Client: client,
+		Config: handler.Config{
+			BinaryRename: "serve:serverd",
+		},
+	}
+
+	r := httptest.NewRequest("GET", "/jpillora/serve?type=json&as=myserve", nil)
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	if w.Result().StatusCode != 200 {
+		t.Fatalf("unexpected status %d", w.Result().StatusCode)
+	}
+
+	var result handler.QueryResult
+	if err := json.Unmarshal(w.Body.Bytes(), &result); err != nil {
+		t.Fatalf("failed to decode JSON: %v", err)
+	}
+
+	if result.AsProgram != "myserve" {
+		t.Fatalf("expected AsProgram 'myserve' (explicit ?as= should override), got %q", result.AsProgram)
+	}
 }

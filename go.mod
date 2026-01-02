@@ -1,4 +1,4 @@
-module github.com/jpillora/installer
+module github.com/voluzi/installer
 
 go 1.24
 
