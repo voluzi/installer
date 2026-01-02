@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -278,51 +277,6 @@ func TestJPilloraServe(t *testing.T) {
 	}
 
 	checkAsset(t, w, "linux/amd64", "serve_1.9.8_linux_amd64.gz")
-}
-
-func TestMicro(t *testing.T) {
-	_, err := makeTestRequest(t, "GET", "/micro")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// TestMicroDoubleBang
-	_, err = makeTestRequest(t, "GET", "/micro!!")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	var (
-		w   *httptest.ResponseRecorder
-		out []byte
-	)
-	if os.Getenv("INTEGRATION") != "1" {
-		t.Skip("Skipping integration test - set INTEGRATION=1 to run")
-	}
-	// TestMicroInstall
-	if w, err = makeTestRequest(t, "GET", "/micro?type=script"); err != nil {
-		t.Fatal(err)
-	}
-	bash := exec.Command("bash") // pipe into bash
-	bash.Stdin = w.Body
-	bash.Dir = os.TempDir()
-	if out, err = bash.CombinedOutput(); err != nil {
-		t.Fatalf("failed to install micro: %s %s", err, out)
-	}
-	t.Log(string(out))
-
-	// TestMicroInstallAs
-	if w, err = makeTestRequest(t, "GET", "/micro?type=script&as=mymicro"); err != nil {
-		t.Fatal(err)
-	}
-	// pipe into bash
-	bash = exec.Command("bash")
-	bash.Stdin = w.Body
-	bash.Dir = os.TempDir()
-	if out, err = bash.CombinedOutput(); err != nil {
-		t.Fatalf("failed to install micro as mymicro: %s %s", err, out)
-	}
-	t.Log(string(out))
 }
 
 func TestGotty(t *testing.T) {

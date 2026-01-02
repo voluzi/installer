@@ -33,11 +33,10 @@ var (
 )
 
 type Query struct {
-	User, Program, Release       string
-	AsProgram, Select            string
-	MoveToPath, Search, Insecure bool
-	SudoMove                     bool   // deprecated: not used, now automatically detected
-	OS, Arch                     string // override OS and Arch
+	User, Program, Release string
+	AsProgram, Select      string
+	MoveToPath, Insecure   bool
+	OS, Arch               string // override OS and Arch
 }
 
 type QueryResult struct {
@@ -165,14 +164,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if q.Program == "" {
 		q.Program = q.User
 		q.User = h.Config.User
-		q.Search = true
 	}
 	if q.Release == "" {
 		q.Release = "latest"
-	}
-	// micro > nano!
-	if q.User == "" && q.Program == "micro" {
-		q.User = "zyedidia"
 	}
 	// force user/repo
 	if h.Config.ForceUser != "" {

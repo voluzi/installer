@@ -27,25 +27,6 @@ func (h *Handler) execute(q Query) (QueryResult, error) {
 	// do real operation
 	ts := time.Now()
 	release, assets, err := h.getAssetsNoCache(q)
-	if err == nil {
-		// didn't need search
-		q.Search = false
-	} else if errors.Is(err, errNotFound) && q.Search {
-		// use ddg/google to auto-detect user...
-		user, program, gerr := imFeelingLuck(q.Program)
-		if gerr != nil {
-			log.Printf("web search failed: %s", gerr)
-		} else {
-			log.Printf("web search found: %s/%s", user, program)
-			if program != q.Program {
-				log.Printf("program mismatch: got %s: expected %s", q.Program, program)
-			}
-			q.Program = program
-			q.User = user
-			// retry assets...
-			release, assets, err = h.getAssetsNoCache(q)
-		}
-	}
 	// asset fetch failed, dont cache
 	if err != nil {
 		return QueryResult{}, err
@@ -86,24 +67,12 @@ func (h *Handler) getAssetsNoCache(q Query) (string, Assets, error) {
 		release = ghr.TagName // discovered
 		ghas = ghr.Assets
 	} else {
-		ghrs := []ghRelease{}
-		if err := h.get(url, &ghrs); err != nil {
+		url += "/tags/" + release
+		ghr := ghRelease{}
+		if err := h.get(url, &ghr); err != nil {
 			return release, nil, err
 		}
-		found := false
-		for _, ghr := range ghrs {
-			if ghr.TagName == release {
-				found = true
-				if err := h.get(ghr.AssetsURL, &ghas); err != nil {
-					return release, nil, err
-				}
-				ghas = ghr.Assets
-				break
-			}
-		}
-		if !found {
-			return release, nil, fmt.Errorf("release tag '%s' not found", release)
-		}
+		ghas = ghr.Assets
 	}
 	if len(ghas) == 0 {
 		return release, nil, errors.New("no assets found")
